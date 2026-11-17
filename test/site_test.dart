@@ -488,6 +488,32 @@ void main() {
       );
     });
 
+    test('an escaped lowercase path gives 200 with no redirect', () async {
+      HtmlRequest? seen;
+      final site = await _serve(pages: [_gymRule(seen: (r) => seen = r)]);
+      for (final (path, id) in [
+        ('/en/gym/s%C3%A3o-paulo', 'são-paulo'),
+        ('/en/gym/%E6%9D%B1%E4%BA%AC', '東京'),
+        ('/en/gym/a%2Fb', 'a/b'),
+      ]) {
+        final got = await _call(site, path);
+
+        expect(got.status, 200, reason: path);
+        expect(seen!.params['id'], id, reason: path);
+      }
+    });
+
+    test('uppercase outside ASCII gives one 301 to lowercase', () async {
+      final site = await _serve();
+      final got = await _call(site, '/EN/gym/S%C3%A3o-Paul%C3%89/?x=1');
+
+      expect(got.status, 301);
+      final location = Uri.parse(got.headers.value('location')!);
+      expect('$location', 'https://example.org/en/gym/s%C3%A3o-paul%C3%A9?x=1');
+      final next = await _call(site, '${location.path}?${location.query}');
+      expect(next.status, 200);
+    });
+
     test('POST and TRACE on a page give 405', () async {
       final site = await _serve();
       for (final method in ['POST', 'TRACE']) {

@@ -503,10 +503,15 @@ final class CrawlableSite {
     final template = _current!;
     final uri = request.requestedUri;
     final path = uri.path;
-    final clean = '/${_trimSlashes(path.toLowerCase())}';
-    if (clean != path) {
+    final trimmed = _trimSlashes(path);
+    final segments = trimmed.isEmpty
+        ? const <String>[]
+        : [for (final s in trimmed.split('/')) Uri.decodeComponent(s)];
+    if (path != '/$trimmed' || segments.any((s) => s != s.toLowerCase())) {
+      final lower = [for (final s in segments) s.toLowerCase()];
       final target = origin.replace(
-        path: clean,
+        path: lower.isEmpty ? '/' : null,
+        pathSegments: lower.isEmpty ? null : lower,
         query: uri.hasQuery ? uri.query : null,
       );
       return _respond(request, _Reply.redirect(301, target, defaults.page));
